@@ -1,0 +1,45 @@
+I, TASK CONTROL
+	1 tạo task
+		1.1 xTaskCreate():
+		1.2 xTaskCreatePrintedToCore():
+	2 thay đổi mức ưu tiên
+		thay đổi mức ưu tiên vTaskPioritySet()
+		lấy mức ưu tiên vTaskPiorityGet()
+	3 đình chỉ tác vụ
+		vTaskSuspend(): truyền NULL nếu tự đình chỉ chính nó
+	4 phục hồi tác vụ
+		vTaskResum() : chỉ gọi khi task bị suspend
+	5 xoá tác vụ
+		vTaskDelete()
+II, QUEUE (FIFO)(Lưu trữ dữ liệu của task)
+	1 Lưu trữ dữ liệu
+	2 truy cập bởi nhiều tác vụ
+	3 khoá quyền đọc hàng đợi
+		- khi 1 tác vụ ra lệnh đọc hàng đợi nếu hàng đợi trống-> tác vụ sẽ block -> đi vào chế độ chờ-> chờ dữ liệu khả dụng từ hàng đợi
+		- 1 tác vụ thoát khỏi chế độ block khi 1 task khác hoặc 1 ISR thực hiện lệnh ghi vào hàng đợi này
+		- tác vụ đi vào trạng thái ready nếuthời gian chờ kết thúc
+ 		- nếu nhiều tác vụ đang đọc -> tác vụ nào đang unblock-> ưu tiên cao hơn. Nếu cùng mức ưu tiên-> tác vụ nào chờ lâu hơn thì được ưu tiên trước.
+
+	4 khoá quyền ghi hàng đợi
+		- khi 1 tác vụ ra lệnh ghi vào hàng đợi -> nó block nếuhàng đợi đang đầy
+		- tác vụ được mở khoá -> luôn luôn là tác vụ có mức ưu tiên cáo nhất trong không gian khả dụng. Nếu các tác vụ bị khoá có mức ưu tiên bằng nhau thì tác vụ đang đợi không gian lâu nhất được unlock-> lưu vào hàng đợi
+	5 khởi tạo hàng đợi
+		xQueueCreate()
+	6 ghi dữ liệu
+		xQueueSendToFront(): ghi lên đầu hàng đợi
+		xQueueSendToBack(): ghi vào cuối hàng đợi
+		xQueueSendToForntFromISR()/xQueueSendToBackFromISR(): dùng trong ngắt
+	7 đọc dữ liệu từ hàng đợi
+		xQueueReceive()
+		xQueueReceiveFromISR(...)
+		xQueuePeek(...); hàm này là đọc dữ liệu mà không xóa mất dữ liệu trong hàng đợi.
+	8 các hàm truy vấn trong hàng đợi
+		uxQueueMessagesWaiting() và uxQueueMessagesWaitingFromISR() để trả về số lượng phần tử được lưu trữ trong hàng đợi
+	9 xoá/ reset hàng đợi
+		Sử dụng hàm xQueueDelete() để xóa hàng đợi, giải phóng tất cả bộ nhớ đã được cấp phát để lưu các phần tử của hàng đợi
+	10 lưu ý
+		Nếu các hàm Sender có Priority thấp hơn hàm Receiver thì hàng đợi luôn có ít hơn 1 phần tử dữ liệu, và hàm Sender thì không cần đặt time out vì nó sẽ thực hiện ngay lập tức. Ngược lại nếu là cao hơn.
+
+		Với kiểu dữ liệu là kiểu cấu trúc thì phải là các trường dữ liệu để nhận diện được kiểu cấu túc đó của Sender nào gửi tới.
+
+		Nếu dữ liệu cần lưu vào hàng đợi lớn hơn khả năng của hàng đợi thì ta chỉ cần lưu vào hàng đợi con trỏ nơi chứa dữ liệu đó.
