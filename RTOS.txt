@@ -43,3 +43,138 @@ II, QUEUE (FIFO)(Lưu trữ dữ liệu của task)
 		Với kiểu dữ liệu là kiểu cấu trúc thì phải là các trường dữ liệu để nhận diện được kiểu cấu túc đó của Sender nào gửi tới.
 
 		Nếu dữ liệu cần lưu vào hàng đợi lớn hơn khả năng của hàng đợi thì ta chỉ cần lưu vào hàng đợi con trỏ nơi chứa dữ liệu đó.
+
+III. SEMAPHORE TRONG FREERTOS
+Semaphore được dùng để: 
+
+Điều khiển truy cập tới một tài nguyên chia sẻ (loại trừ lẫn nhau – Mutex)
+
+Báo hiệu một sự kiện (event) xảy ra 
+
+Cho phép hai tác vụ đồng bộ hóa hoạt động của chúng
+
+Ý tưởng cơ bản: 
+
+Một semaphore chứa một số lượng token. Code cần nhận được một token để tiếp tục thực thi
+
+Nếu tất cả token của semaphore đã được sử dụng, tác vụ yêu cầu sẽ bị đình chỉ (suspended) cho đến khi một số token được giải phóng bởi các chủ sở hữu hiện tại của chúng
+
+Semaphore làm việc như thế nào? 
+
+§ Một semaphore có:
+
+Counter: Số lượng truy cập đồng thời tối đa
+
+Queue: Cho các tác vụ chờ truy cập
+
+§ Nếu một tác vụ yêu cầu (đợi - wait) một semaphore 
+
+Nếu counter> 0, thì (1) counter giảm đi 1 và (2) tác vụ nhận semaphore và tiến hành công việc của nó
+
+Ngược lại, tác vụ bị chặn (Block) và đưa vào queue
+
+§ Nếu một tác vụ giải phóng (đăng - post) một semaphore 
+
+Nếu có tác vụ trong hàng đợi semaphore, thì tác vụ thích hợp sẽ được chuẩn bị sẵn, theo chính sách xếp hàng
+
+Ngược lại, counter được tăng thêm 1
+
+Có 2 loại semaphore: Binary semaphore, Couting semaphore
+
+1. Binary Semaphore
+Binary Semaphore defintion
+
+Cho mục đích đồng bộ hóa, một semaphore nhị phân có thể được hiểu như một queue chỉ có một phần tử dữ liệu (item) 
+
+ Hàng đợi chỉ có thể trống hoặc đầy (do đó gọi là nhị phân)
+
+§ Các tác vụ sử dụng hàng đợi không quan tâm hàng đợi chứa gì, chỉ muốn biết hàng đợi trống hay đầy
+
+ Nếu có nhiều hơn một tác vụ khóa (lock) trên cùng một semaphore, thì tác vụ có mức ưu tiên cao nhất sẽ là tác vụ được unlock vào lần semaphore khả dụng tiếp theo (semaphore đầy)
+
+Nhiều tác vụ có thể sử dụng semaphore nhị phân trong một ứng dụng duy nhất. Nhưng chỉ có một nhiệm vụ có thể đạt được nó tại một thời điểm. Việc làm cho semaphore trở thành một tài nguyên toàn cục cho phép bất kỳ tác vụ nào giải phóng nó, ngay cả khi tác vụ ban đầu không có được nó.
+
+Deferred Interrupt Processing
+
+Cách tốt nhất để xử lý các sự kiện phức tạp do ngắt kích hoạt là không thực hiện mã trong ISR
+
+Tạo một tác vụ đang chặn (block) trên semaphore nhị phân 
+
+Khi ngắt xảy ra, ISR chỉ đặt (give) semaphore và thoát
+
+Tác vụ hiện tại có thể được lên lịch giống như bất kỳ tác vụ nào khác 
+
+Không cần phải lo lắng về việc lồng các ngắt (nesting interrupt) và mức độ ưu tiên của ngắt
+
+Điều này được gọi là Deferred Interrupt Processing
+
+Graphical user interfaceDescription automatically generated with low confidence
+
+Semaphore được tạo ở trạng thái “empty” (rỗng)
+
+Một semaphore nhị phân không cần được trả (give) lại sau khi lấy (take), do đó, đồng bộ hóa tác vụ có thể được thực hiện bởi một tác vụ/ngắt liên tục 'cấp' (give) semaphore trong khi một tác vụ khác liên tục 'lấy‘ (take) semaphore
+
+Semaphore nhị phân được gán cho các biến kiểu SemaphoreHandle_t và có thể được sử dụng trong bất kỳ hàm API nào nhận tham số kiểu này
+
+Tạo semaphore nhị phân: 
+
+SemaphoreHandle_t   xSemaphoreCreateBinary(void);
+Cấp (give) một semaphore nhị phân: 
+
+xSemaphoreGiveFromISR( SemaphoreHandle_t xSemaphore,
+signed BaseType_t *pxHigherPriorityTaskWoken)
+Reset (take) một semaphore nhị phân: xSemaphoreTake(xSemaphoreHandle xSemaphore,
+
+portTickType xBlockTime)
+2. Counting Semaphore
+Đếm sự kiện:
+
+Một trình xử lý sự kiện (event handler) sẽ 'cung cấp‘ (give) một semaphore mỗi khi một sự kiện xảy ra và một tác vụ xử lý (handler task) sẽ 'lấy' (take) một semaphore mỗi khi nó xử lý một sự kiện
+
+Quản lý tài nguyên: 
+
+Giá trị đếm cho biết số lượng tài nguyên khả dụng 
+
+Để có được một tài nguyên, một tác vụ phải lấy (take) một semaphore 
+
+Khi một tác vụ kết thúc với tài nguyên, nó 'trả lại' (give) semaphore đó
+
+SemaphoreHandle_t xSemaphoreCreateCounting( UBaseType_t uxMaxCount, UBaseType_t uxInitialCount)
+
+FreeRTOS Notları #5: Semaphore | mehmettopuz.net
+
+3. So sánh Binary Semaphore và Counting Semaphore
+DiagramDescription automatically generated
+
+IV. MUTEX TRONG FREERTOS
+Về cơ bản thì MUTEX tương tự như bin Semaphore nhưng có tích thêm cơ chế “kế thừa mức ưu tiên” và được dùng cho mục đích loại trừ (hạn chế quyền truy cập vào resource của các task khác) chứ không phải là để đồng bộ như Semaphore.
+
+ Kế thừa mức ưu tiên: Khi task có mức ưu tiên cao hơn muốn take MUTEX trong khi task có mức ưu tiên thấp hơn đang giữ nó thì, mức ưu tiên của 2 task sẽ được tráo cho nhau, cho tới khi task kia give MUTEX thì mức ưu tiên sẽ hoàn trả lại như cũ. Cơ chế này được thiết kế nhằm chắc chắn rằng các task có mức ưu tiên cao chỉ ở trạng thái block trong thời gian ngắn nhất có thể nhằm tránh tình trạng deadlock của hệ thống.
+
+Được sử dụng cho việc loại trừ lẫn nhau, để tại một thời điểm chỉ một tác vụ sử dụng tài nguyên chia sẻ, ví dụ: file, dữ liệu, thiết bị, … 
+
+ Để truy cập tài nguyên chia sẻ, một tác vụ khóa mutex liên kết với tài nguyên
+
+ Tác vụ sở hữu mutex cho đến khi nó unlock mutex
+
+Mutex Management
+
+Khi 1 task muốn truy cập vào tài nguyên để thực thi nhiệm vụ thì sẽ take Mutex. Trong lúc đó, bất kì task nào muốn take Mutex đều bị block cho tới khi task đang giữ Mutex “give” về chỗ cũ.
+
+Có thể hiểu đơn giản Mutex giống như khóa tủ gửi đồ trong siêu thị, muốn mở được tủ khóa để cất đồ thì cần có chìa khóa, và sau khi dùng xong phải để chìa khóa về chỗ cũ cho người khác dùng.
+
+Graphical user interface
+
+Description automatically generated
+
+MỘT SỐ ĐIỂM KHÁC SO VS SEMAPHORE
+
+Task đang sở hữu mutex sẽ không bao giờ phải chờ task khác thực thi, còn task đang sở hữu semaphore thì có thể vẫn phải chờ task khác thực thi xong.
+
+Chỉ có task cầm mutex mới được give mutex, bất kì task nào cũng có thể give semaphore. Chính vì vậy trình phục vụ ngắt có thể give Semaphore nhưng đối với Mutex thì không.
+
+Có thể có nhiều Semaphore, nhưng chỉ có duy nhất 1 mutex.
+
+- Kết luận:
+
+Semaphore là một lựa chọn tốt hơn trong trường hợp có nhiều tài nguyên sẵn có. Trong trường hợp tài nguyên được chia sẻ duy nhất, mutex là lựa chọn tốt hơn.
