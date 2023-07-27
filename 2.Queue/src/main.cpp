@@ -20,7 +20,7 @@ void setup()
   Serial.begin(115200);
   // 1 create task
 
-  Queue1 = xQueueCreate(7, sizeof(TxBuff));
+  Queue1 = xQueueCreate(7, 30 * sizeof(char));
   xTaskCreatePinnedToCore(task1, "task1", 1024, NULL, 1, &TaskHandle_1, 1);
   xTaskCreatePinnedToCore(task2, "task2", 1024, NULL, 1, &TaskHandle_2, 1);
 }
@@ -29,16 +29,15 @@ void loop()
   if (Serial.available() > 0)
   {
     String buff = Serial.readStringUntil('\n');
-    Serial.print("\nReceived String: ");
-    Serial.println(buff);
+    Serial.print("\nSend String: ");
     sprintf(TxBuff, buff.c_str());
-    xQueueSend(Queue, (void *)TxBuff, (TickType_t)0);
+    Serial.println(TxBuff);
+    xQueueSend(Queue1, (void *)TxBuff, (TickType_t)0);
   }
 }
 
 void task1(void *p)
 {
-  Serial.println("on task 1");
   int data = 1;
   // create Queue
   Queue = xQueueCreate(7, sizeof(int));
@@ -61,8 +60,6 @@ void task1(void *p)
 }
 void task2(void *p)
 {
-  vTaskDelay(100 / portTICK_PERIOD_MS);
-  Serial.println("on task 2");
   int dataRcv;
   char RxBuff[30];
   while (true)
@@ -78,7 +75,7 @@ void task2(void *p)
     }
     if (Queue1 != 0)
     {
-      if (xQueueReceive(Queue, (void *)RxBuff, (TickType_t)0))
+      if (xQueueReceive(Queue1, (void *)RxBuff, (TickType_t)5))
       {
         Serial.print("data 2 receive: ");
         Serial.print(RxBuff);
