@@ -1,0 +1,4 @@
+CƠ CHẾ GIAO TIẾP
+    Chia sẻ bộ nhớ (memory sharing) // global variable/ mutex/ semaphone
+    Cơ chế tín hiệu (signaling mechanism)//event group
+    Truyền thông điệp (message passing)// Message queue/Mailbox ( giống queue nhưng khi đọc -> k mất datas)
