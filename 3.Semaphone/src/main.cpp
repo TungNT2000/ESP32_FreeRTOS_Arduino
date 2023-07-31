@@ -1,63 +1,67 @@
 #include <Arduino.h>
 SemaphoreHandle_t xMutex;
-void lowPriorityTask(void *parameter);
-void highPriorityTask(void *parameter);
+void task1(void *parameter);
+void task2(void *parameter);
+
 void setup()
 {
   Serial.begin(115200);
   /* create Mutex */
   xMutex = xSemaphoreCreateMutex();
-
-  xTaskCreate(
-      lowPriorityTask,   /* Task function. */
-      "lowPriorityTask", /* name of task. */
-      1000,              /* Stack size of task */
-      NULL,              /* parameter of the task */
-      1,                 /* priority of the task */
-      NULL);             /* Task handle to keep track of created task */
-  delay(500);
-  /* let lowPriorityTask run first then create highPriorityTask */
-  xTaskCreate(
-      highPriorityTask,   /* Task function. */
-      "highPriorityTask", /* name of task. */
-      1000,               /* Stack size of task */
-      NULL,               /* parameter of the task */
-      4,                  /* priority of the task */
-      NULL);              /* Task handle to keep track of created task */
+  if (xMutex != NULL)
+  {
+    xTaskCreate(
+        task1,   /* Task function. */
+        "task1", /* name of task. */
+        1000,    /* Stack size of task */
+        NULL,    /* parameter of the task */
+        1,       /* priority of the task */
+        NULL);   /* Task handle to keep track of created task */
+    delay(500);
+    /* let lowPriorityTask run first then create highPriorityTask */
+    xTaskCreate(
+        task2,   /* Task function. */
+        "task2", /* name of task. */
+        1000,    /* Stack size of task */
+        NULL,    /* parameter of the task */
+        4,       /* priority of the task */
+        NULL);   /* Task handle to keep track of created task */
+  }
+  // vTaskStartScheduler();
 }
 
 void loop()
 {
+  vTaskSuspend(NULL);
 }
-void lowPriorityTask(void *parameter)
+void task1(void *parameter)
 {
-  Serial.println((char *)parameter);
+  // Serial.println((char *)parameter);
   for (;;)
   {
-    Serial.println("lowPriorityTask gains key");
+    Serial.println("task1");
     xSemaphoreTake(xMutex, portMAX_DELAY);
     /* even low priority task delay high priority
     still in Block state */
-    delay(2000);
-    Serial.println("lowPriorityTask releases key");
+    Serial.println("task1 is running");
     xSemaphoreGive(xMutex);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
   vTaskDelete(NULL);
 }
 
-void highPriorityTask(void *parameter)
+void task2(void *parameter)
 {
-  Serial.println((char *)parameter);
+  // Serial.println((char *)parameter);
   for (;;)
   {
-    Serial.println("highPriorityTask gains key");
+    Serial.println("task2");
     /* highPriorityTask wait until lowPriorityTask release key */
     xSemaphoreTake(xMutex, portMAX_DELAY);
-    Serial.println("highPriorityTask is running");
-    Serial.println("highPriorityTask releases key");
+    Serial.println("task2 is running");
     xSemaphoreGive(xMutex);
     /* delay so that lowPriorityTask has chance to run */
-    delay(1000);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
   vTaskDelete(NULL);
 }

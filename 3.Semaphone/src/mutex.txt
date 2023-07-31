@@ -1,0 +1,82 @@
+#include <Arduino.h>
+SemaphoreHandle_t xMutex;
+void task1(void *parameter);
+void task2(void *parameter);
+int x=1,y=2;
+TaskHandle_t taskHandle_1=(void*)&x;
+TaskHandle_t taskHandle_2=(void*)&y;
+int cnt=0;
+void setup()
+{
+  Serial.begin(115200);
+  /* create Mutex */
+  xMutex = xSemaphoreCreateMutex();
+  if (xMutex != NULL)
+  {
+    xTaskCreate(
+        task1,   /* Task function. */
+        "task1", /* name of task. */
+        1000,    /* Stack size of task */
+        NULL,    /* parameter of the task */
+        1,       /* priority of the task */
+        &taskHandle_1);   /* Task handle to keep track of created task */
+    delay(500);
+    /* let lowPriorityTask run first then create highPriorityTask */
+    xTaskCreate(
+        task2,   /* Task function. */
+        "task2", /* name of task. */
+        1000,    /* Stack size of task */
+        NULL,    /* parameter of the task */
+        1,       /* priority of the task */
+        &taskHandle_1);   /* Task handle to keep track of created task */
+  }
+ // vTaskStartScheduler();
+}
+
+void loop()
+{
+  int *h=(int *)xSemaphoreGetMutexHolder( xMutex );
+  Serial.println((*h),HEX);
+  vTaskDelay(750 / portTICK_PERIOD_MS);
+}
+void task1(void *parameter)
+{
+   
+  // Serial.println((char *)parameter);
+  for (;;)
+  {
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    xSemaphoreTake(xMutex, portMAX_DELAY);
+    /* even low priority task delay high priority
+    still in Block state */
+    cnt+=1;
+    Serial.print("task1 is running - cnt= ");
+    Serial.println(cnt);
+   
+    //xSemaphoreGive(xMutex);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  }
+//  vTaskDelete(NULL);
+}
+
+void task2(void *parameter)
+{
+ 
+  // Serial.println((char *)parameter);
+
+  for (;;)
+  {
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+     xSemaphoreTake(xMutex, portMAX_DELAY);
+    /* highPriorityTask wait until lowPriorityTask release key */
+   
+    cnt--;
+    Serial.print("task2 is running - cnt= ");
+    Serial.println(cnt);
+    xSemaphoreGive(xMutex);
+    /* delay so that lowPriorityTask has chance to run */
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+ // vTaskDelete(NULL);
+}
